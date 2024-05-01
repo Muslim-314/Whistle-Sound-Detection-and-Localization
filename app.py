@@ -42,6 +42,7 @@ def handle_close(signum, frame):
 signal.signal(signal.SIGINT, handle_close)
 
 
+
 # Listen to Sound Input
 while True:
     data_buffer = stream.read(CHUNK, exception_on_overflow=False)
@@ -50,7 +51,6 @@ while True:
     y_fft = numpy.fft.fft(sound_data)
     y_fft = numpy.abs(y_fft).astype(int)
     plotter.plot(y_fft)
-    
     if any(value > 250000 for value in y_fft[1000:3000]):
         print("whistle ")
         
