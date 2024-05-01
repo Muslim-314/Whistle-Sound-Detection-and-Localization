@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Realtime FFT from any audio input with PyAudio and Matplotlib
 
 What we want to achieve
@@ -66,3 +67,6 @@ python app.py
 if you new to the topic FFT, i can recommend you watching [this video](https://youtu.be/spUNpyF58BY). It is nicely animated and explained :) 
 
 
+=======
+# Whistle-Sound-Detection-and-Localization
+>>>>>>> 25d37b21c995a51a63ef8b7b20ecf475701f4a6b
