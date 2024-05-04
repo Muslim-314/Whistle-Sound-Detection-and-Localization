@@ -40,8 +40,7 @@ def handle_close(signum, frame):
     p.terminate()
     exit(1)
 signal.signal(signal.SIGINT, handle_close)
-
-
+i = 0
 
 # Listen to Sound Input
 while True:
@@ -51,8 +50,14 @@ while True:
     y_fft = numpy.fft.fft(sound_data)
     y_fft = numpy.abs(y_fft).astype(int)
     plotter.plot(y_fft)
-    if any(value > 250000 for value in y_fft[1000:3000]):
-        print("whistle ")
+    if any(value > 400000 for value in y_fft[1850:2000]):
+        print("whistle ",i)
+        i = i + 1
+        
+        #finding the freq for which the magnitude is greater than threshold
+        # indexes_above_threshold = numpy.where(y_fft > 30000)[0]
+        # if len(indexes_above_threshold) > 0:
+        #     print("Whistle detected at indexes:", indexes_above_threshold)
         
 
 
