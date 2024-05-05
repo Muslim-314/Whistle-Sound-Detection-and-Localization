@@ -4,12 +4,11 @@ import numpy
 import pyaudio
 import matplotlib.pyplot as plt
 sys.path.append("src")
-from select_device import select_device
 from plotter import FFT_Plotter, FFT_Normalized_DB_Plotter
 from normalized_db import normalizedDb
 
 sys.path.remove("src")
-
+sampleRate = 44100
 p = pyaudio.PyAudio()
 
 # the size of buffer
@@ -19,14 +18,12 @@ CHUNK = 2**11 # =2048
  
 
 
-# Select Input Device and Open PyAudio Stream
-deviceId, sampleRate = select_device(p)
 stream = p.open(format = pyaudio.paInt16,
                 channels = 1,
                 rate = sampleRate,
                 input = True,
                 frames_per_buffer = CHUNK,
-                input_device_index = deviceId)
+               )
 
 # plotter = FFT_Normalized_DB_Plotter(CHUNK, sampleRate) 
 plotter= FFT_Plotter(CHUNK, sampleRate)
