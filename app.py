@@ -1,13 +1,26 @@
 import sys
 import signal
-import numpy
+import numpy 
 import pyaudio
+import scipy
 import matplotlib.pyplot as plt
 sys.path.append("src")
 from plotter import FFT_Plotter, FFT_Normalized_DB_Plotter
 from normalized_db import normalizedDb
 sys.path.remove("src")
 sampleRate = 44100
+
+def lag_finder(y1, y2, sr):
+    n = len(y1)
+
+    corr = numpy.correlate(y2, y1, mode='same') / numpy.sqrt(numpy.correlate(y1, y1, mode='same')[int(n/2)] * numpy.correlate(y2, y2, mode='same')[int(n/2)])
+
+    delay_arr = numpy.linspace(-0.5*n/sr, 0.5*n/sr, n)
+    delay = delay_arr[numpy.argmax(corr)]
+    return delay
+
+
+
 
 #instantiate the microphones
 p = pyaudio.PyAudio()
@@ -20,20 +33,23 @@ r = pyaudio.PyAudio()
 # then the FFT applies every 2048/48000(s) = ~0,043 seconds
 CHUNK = 2**11 # =2048
  
-stream = p.open(format = pyaudio.paInt16,
+streamp = p.open(format = pyaudio.paInt16,
+                input_device_index = 1,
                 channels = 1,
                 rate = sampleRate,
                 input = True,
                 frames_per_buffer = CHUNK,
                )
 
-stream = q.open(format = pyaudio.paInt16,
+streamq = q.open(format = pyaudio.paInt16,
+                input_device_index = 2,
                 channels = 1,
                 rate = sampleRate,
                 input = True,
                 frames_per_buffer = CHUNK,
                )
-stream = r.open(format = pyaudio.paInt16,
+streamr = r.open(format = pyaudio.paInt16,
+                input_device_index = 3,
                 channels = 1,
                 rate = sampleRate,
                 input = True,
@@ -51,46 +67,68 @@ def handle_close(signum, frame):
     plotter_p.close()
     plotter_q.close()
     plotter_r.close()
-    stream.close()
+    streamp.close()
     p.terminate()
+    streamq.close()
+    q.terminate()
+    streamr.close()
+    r.terminate()
     exit(1)
 signal.signal(signal.SIGINT, handle_close)
 i = 0
 j = 0
 k = 0 
 # Listen to Sound Input
+whistle_FlagP = False
+whistle_FlagQ = False
+whistle_FlagR = False
 while True:
-    #computation for first microphone(p)
-    data_buffer_p = stream.read(CHUNK, exception_on_overflow=False)
+    #computation for first microphone(p)3
+    data_buffer_p = streamp.read(CHUNK, exception_on_overflow=False)
     sound_data_p = numpy.frombuffer(data_buffer_p, dtype=numpy.int16)
     y_fft_p = numpy.fft.fft(sound_data_p)
-    y_fft_p = numpy.abs(y_fft_p).astype(int)
-    plotter_p.plot(y_fft_p)
-    if any(value > 400000 for value in y_fft_p[1850:2000]):
+    #y_fft_p = numpy.abs(y_fft_p).astype(int)
+    #plotter_p.plot(y_fft_p)
+    if any(value > 8000000 for value in y_fft_p[1900:2000]):
+        whistle_FlagP = True
         print("whistle MC1",i)
         i = i + 1
-
+    else:
+        whistle_FlagP = False
 
     #computation for first microphone(q)
-    data_buffer_q = stream.read(CHUNK, exception_on_overflow=False)
+    data_buffer_q = streamq.read(CHUNK, exception_on_overflow=False)
     sound_data_q = numpy.frombuffer(data_buffer_q, dtype=numpy.int16)
-    y_fft_q = numpy.fft.fft(sound_data_p)
-    y_fft_q = numpy.abs(y_fft_q).astype(int)
-    plotter_q.plot(y_fft_q)
-    if any(value > 400000 for value in y_fft_q[1850:2000]):
+    y_fft_q = numpy.fft.fft(sound_data_q)
+    #y_fft_q = numpy.abs(y_fft_q).astype(int)
+    #plotter_q.plot(y_fft_q)
+    if any(value > 8000000 for value in y_fft_q[1900:2000]):
+        whistle_FlagQ = True
         print("whistle MC2",j)
         j = j + 1
-
+    else:
+        whistle_FlagQ = False
     #computation for first microphone(p)
-    data_buffer_r = stream.read(CHUNK, exception_on_overflow=False)
+    data_buffer_r = streamr.read(CHUNK, exception_on_overflow=False)
     sound_data_r  = numpy.frombuffer(data_buffer_r, dtype=numpy.int16)
     y_fft_r = numpy.fft.fft(sound_data_r)
-    y_fft_r = numpy.abs(y_fft_r).astype(int)
-    plotter_r.plot(y_fft_r)
-    if any(value > 400000 for value in y_fft_r[1850:2000]):
+    #y_fft_r = numpy.abs(y_fft_r).astype(int)
+    #plotter_r.plot(y_fft_r)
+    if any(value > 8000000 for value in y_fft_r[1900:2000]):
+        whistle_FlagR = True
         print("whistle MC3",k)
         k = k + 1
-
+    else:
+        whistle_FlagR = False
+        
+    if (whistle_FlagP == True and whistle_FlagQ == True and whistle_FlagR == True):    
+        time_delayPR = lag_finder(sound_data_p,sound_data_q,CHUNK)
+        time_delayQR = lag_finder(sound_data_q, sound_data_r, CHUNK)
+        if (time_delayPR > time_delayQR):
+            print("Sound from right side")
+        else:
+            print("Soudn from the left side")
+            
         #finding the freq for which the magnitude is greater than threshold
         # indexes_above_threshold = numpy.where(y_fft > 30000)[0]
         # if len(indexes_above_threshold) > 0:
