@@ -1,3 +1,7 @@
+# Left POrt4
+# Center port 1
+# Right port 3
+
 import threading
 import sys
 import signal
@@ -19,9 +23,10 @@ r = pyaudio.PyAudio()
 
 def lag_finder(y1, y2, sr):
     n = len(y1)
-    corr = numpy.correlate(y2, y1, mode='same') / numpy.sqrt(numpy.correlate(y1, y1, mode='same')[int(n/2)] * numpy.correlate(y2, y2, mode='same')[int(n/2)])
-    delay_arr = numpy.linspace(-0.5*n/sr, 0.5*n/sr, n)
-    delay = delay_arr[numpy.argmax(corr)]
+    similarity = numpy.correlate(y2, y1,mode = 'full') 
+    lag = numpy.arange(-len(y2)+1,len(y1))
+    I = numpy.argmax(abs(similarity))
+    delay = lag[I]/sr
     return delay
 
 streamp = p.open(format = pyaudio.paInt16,
@@ -39,8 +44,6 @@ streamq = q.open(format = pyaudio.paInt16,
                 frames_per_buffer = CHUNK,
                )
 
-
-# test the laptops MIC for testing remove SR when using code on 
 streamr = r.open(format = pyaudio.paInt16,
                 input_device_index = 4,
                 channels = 1,
@@ -51,10 +54,9 @@ streamr = r.open(format = pyaudio.paInt16,
 sound_data_p = [0] *CHUNK
 sound_data_q = [0] *CHUNK
 sound_data_r = [0] *CHUNK
-whistle_flag = False
-
-
-
+whistle_flagP = False
+whistle_flagQ = False
+whistle_flagR = False
 # Init shutdown process on Ctrl+C 
 print("Starting... use Ctrl+C to stop")
 def handle_close(signum, frame):
@@ -73,10 +75,8 @@ signal.signal(signal.SIGINT, handle_close)
 
 # Thread for MIC-1 
 def MIC1():
-    global whistle_flag
+    global whistle_flagP
     global sound_data_p
-    global sound_data_q
-    global sound_data_r
     i = 0
     while True:
         data_buffer_p = streamp.read(CHUNK, exception_on_overflow=False)
@@ -84,16 +84,15 @@ def MIC1():
         y_fft_p = numpy.fft.fft(sound_data_p)
         y_fft_p = numpy.abs(y_fft_p).astype(int)
         if any(value > 8000000 for value in y_fft_p[1900:2000]):
-            print("whistle MC1",i)
+            print("whistle MC1 ",i)
             i = i + 1
-            whistle_flag = True
+            whistle_flagP = True
         
 # Thread for MIC-2
 def MIC2():
-    global whistle_flag
-    global sound_data_p
+    global whistle_flagQ
     global sound_data_q
-    global sound_data_r
+    
     i = 0
     while True:
         data_buffer_q = streamq.read(CHUNK, exception_on_overflow=False)
@@ -103,13 +102,11 @@ def MIC2():
         if any(value > 8000000 for value in y_fft_q[1900:2000]):
             print("whistle MC2",i)
             i = i + 1
-            whistle_flag = True    
+            whistle_flagQ = True    
 
 # Thread for MIC-3
 def MIC3():
-    global whistle_flag
-    global sound_data_p
-    global sound_data_q
+    global whistle_flagR
     global sound_data_r
     k = 0
     while True:
@@ -118,28 +115,46 @@ def MIC3():
         y_fft_r = numpy.fft.fft(sound_data_r)
         y_fft_r = numpy.abs(y_fft_r).astype(int)
         if any(value > 8000000 for value in y_fft_r[1900:2000]):
-            print("whistle MC3",k)
+            print("whistle MC3 ",k)
             k = k + 1
-            whistle_flag = True
+            whistle_flagR = True
  
 def mainProg():
-    global whistle_flag
+    global whistle_flagP
+    global whistle_flagQ
+    global whistle_flagR
+    
     global sound_data_p
     global sound_data_q
     global sound_data_r
+    global sampleRate
     while True:
-         if(whistle_flag == True):
-             print("Sound data P:", sound_data_p)
-             print("Sound data Q:", sound_data_q)
-             print("Sound data R:", sound_data_r)
+         if((whistle_flagP == True) or (whistle_flagQ == True) or (whistle_flagR == True)):
+             # print("Sound Data P :" , sound_data_p)
+             # print("Sound Data Q :" , sound_data_q)
+             # print("Sound Data R:" , sound_data_r)
              t1 = lag_finder(sound_data_p,sound_data_q,sampleRate)
              t2 = lag_finder(sound_data_q,sound_data_r,sampleRate)
              t3 = lag_finder(sound_data_p,sound_data_r,sampleRate)
              print('Between p and q: t1 = ', t1)
              print('Between q and r: t2 = ', t2)
              print('Between p and r: t3 = ', t3)
-         whistle_flag = False
-
+             if(whistle_flagP):
+                 print('RIGHT')
+                 whistle_flagP = False
+                 whistle_flagQ = False
+                 whistle_flagR = False
+             elif(whistle_flagQ):
+                 print('LEFT')
+                 whistle_flagP = False
+                 whistle_flagQ = False
+                 whistle_flagR = False    
+             elif(whistle_flagR):
+                 print('FRONT')
+                 whistle_flagP = False
+                 whistle_flagQ = False
+                 whistle_flagR = False
+             
  
 thread1 = threading.Thread(target=MIC1)
 thread2 = threading.Thread(target=MIC2)
