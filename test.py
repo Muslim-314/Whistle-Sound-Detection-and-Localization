@@ -1,3 +1,5 @@
+
+#find the index of the microphones to be used in the audio_threading.py
 import pyaudio
 
 p = pyaudio.PyAudio()
